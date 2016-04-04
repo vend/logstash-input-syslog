@@ -36,6 +36,8 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
   # ports) may require root to use.
   config :port, :validate => :number, :default => 514
 
+  config :octet_encoding, :validate => :boolean, :default => false
+
   # Use label parsing for severity and facility levels.
   config :use_labels, :validate => :boolean, :default => true
 
@@ -170,7 +172,16 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
     @logger.info("new connection", :client => "#{ip}:#{port}")
     LogStash::Util::set_thread_name("input|syslog|tcp|#{ip}:#{port}}")
 
-    socket.each { |line| decode(ip, output_queue, line) }
+    if @octet_encoding
+
+      # TODO: do this in loop/while until EOF
+      frame_length = socket.gets(' ', 20).strip.to_i
+      data = socket.read(frame_length)
+      decode(ip, output_queue, data)
+    else
+      socket.each { |line| decode(ip, output_queue, line) }
+    end
+
   rescue Errno::ECONNRESET
     # swallow connection reset exceptions to avoid bubling up the tcp_listener & server
   ensure

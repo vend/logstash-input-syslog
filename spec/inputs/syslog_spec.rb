@@ -15,6 +15,41 @@ require "socket"
 
 describe LogStash::Inputs::Syslog do
   SYSLOG_LINE = "<164>Oct 26 15:19:25 1.2.3.4 %ASA-4-106023: Deny udp src DRAC:10.1.2.3/43434 dst outside:192.168.0.1/53 by access-group \"acl_drac\" [0x0, 0x0]"
+  OCTET_LINE = "282 " + SYSLOG_LINE
+
+  it "should accept octet encoded lines" do
+    port = 5511
+    event_count = 1
+    conf = <<-CONFIG
+      input {
+        syslog {
+          type => "blah"
+          port => #{port}
+          octet_encoding => true
+        }
+      }
+    CONFIG
+
+    events = input(conf) do |pipeline, queue|
+      socket = Stud.try(5.times) { TCPSocket.new("127.0.0.1", port) }
+      event_count.times do |i|
+        socket.puts(OCTET_LINE)
+      end
+      socket.close
+
+      event_count.times.collect { queue.pop }
+    end
+
+    insist { events.length } == event_count
+    events.each do |event|
+      puts event.to_json
+
+      insist { event["priority"] } == 164
+      insist { event["severity"] } == 4
+      insist { event["facility"] } == 20
+    end
+
+  end
 
   it "should properly handle priority, severity and facilities" do
     port = 5511
