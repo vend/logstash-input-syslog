@@ -38,7 +38,7 @@ describe LogStash::Inputs::Syslog do
         syslog {
           type => "blah"
           port => #{port}
-          octet_encoding => true
+          octet_framed => true
         }
       }
     CONFIG
