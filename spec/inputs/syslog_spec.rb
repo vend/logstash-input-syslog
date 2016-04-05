@@ -15,11 +15,11 @@ require "socket"
 
 describe LogStash::Inputs::Syslog do
   SYSLOG_LINE = "<164>Oct 26 15:19:25 1.2.3.4 %ASA-4-106023: Deny udp src DRAC:10.1.2.3/43434 dst outside:192.168.0.1/53 by access-group \"acl_drac\" [0x0, 0x0]"
-  OCTET_LINE = "282 " + SYSLOG_LINE
+  OCTET_LINE = SYSLOG_LINE.length.to_s + " " + SYSLOG_LINE
 
-  it "should accept octet encoded lines" do
+  it "should accept octet framed messages" do
     port = 5511
-    event_count = 1
+    event_count = 10
     conf = <<-CONFIG
       input {
         syslog {
@@ -42,8 +42,6 @@ describe LogStash::Inputs::Syslog do
 
     insist { events.length } == event_count
     events.each do |event|
-      puts event.to_json
-
       insist { event["priority"] } == 164
       insist { event["severity"] } == 4
       insist { event["facility"] } == 20
