@@ -173,12 +173,24 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
     LogStash::Util::set_thread_name("input|syslog|tcp|#{ip}:#{port}}")
 
     if @octet_encoding
-
-      # TODO: do this in loop/while until EOF
-      frame_length = socket.gets(' ', 20).strip.to_i
-      data = socket.read(frame_length)
-      decode(ip, output_queue, data)
+      # Octet-counted framing includes the length of the message, prefixed before the traditional syslog MSG
+      # https://tools.ietf.org/html/rfc6587#section-3.4.1
+      while frame_length_raw = socket.gets(' ', 20) do
+        frame_length = frame_length_raw.rstrip.to_i
+        if frame_length > 0
+          # Read the rest of the message
+          if data = socket.read(frame_length)
+            if data.length != frame_length
+              @logger.info('Received truncated octet-framed syslog message.', :expecting => frame_length, :recieved => data.length, :data => data)
+            end
+            decode(ip, output_queue, data)
+          end
+        else
+          @logger.warn("Invalid syslog frame length", :frame_length => frame_length_raw)
+        end
+      end
     else
+      # Traditional framed message. Break on newlines.
       socket.each { |line| decode(ip, output_queue, line) }
     end
 
