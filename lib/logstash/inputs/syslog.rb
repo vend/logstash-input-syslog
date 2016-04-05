@@ -36,7 +36,7 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
   # ports) may require root to use.
   config :port, :validate => :number, :default => 514
 
-  config :octet_encoding, :validate => :boolean, :default => false
+  config :octet_framed, :validate => :boolean, :default => false
 
   # Use label parsing for severity and facility levels.
   config :use_labels, :validate => :boolean, :default => true
@@ -172,7 +172,7 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
     @logger.info("new connection", :client => "#{ip}:#{port}")
     LogStash::Util::set_thread_name("input|syslog|tcp|#{ip}:#{port}}")
 
-    if @octet_encoding
+    if @octet_framed
       # Octet-counted framing includes the length of the message, prefixed before the traditional syslog MSG
       # https://tools.ietf.org/html/rfc6587#section-3.4.1
       while frame_length_raw = socket.gets(' ', 20) do
