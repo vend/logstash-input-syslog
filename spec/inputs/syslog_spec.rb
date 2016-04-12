@@ -37,7 +37,9 @@ describe LogStash::Inputs::Syslog do
       end
       socket.close
 
-      event_count.times.collect { queue.pop }
+      Timeout::timeout(10) {
+        event_count.times.collect { queue.pop }
+      }
     end
 
     insist { events.length } == event_count
